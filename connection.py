@@ -4,6 +4,8 @@ import uuid
 from shapely.geometry import LineString, MultiLineString
 from base import Shape
 
+import config
+
 class connection_types(Enum):
 
     dirt_road = 1
@@ -40,6 +42,7 @@ class Road(Shape):
         self.add_path(path)
         # FIXME -- add id
         self._id = uuid.uuid4()
+        self.set_display_repr(config.ROAD_DIRT_BLOCK)
 
     def __repr__(self):
         output = ''

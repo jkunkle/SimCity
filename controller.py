@@ -4,11 +4,12 @@ from components.resident import resident
 import random
 import utils
 import pandas as pd
+import numpy as np
 import PySimpleGUI as sg
 from shapely.geometry import Point
+from shapely import affinity
 from scipy.stats import poisson
 import config
-
 
 class AdvertBoard:
 
@@ -37,8 +38,9 @@ class Controller:
         self._paths = []
         self._applications = []
 
-    def add_zone(self, zone):
+    def add_empty_zone(self, zone):
         self._zones.append(zone)
+
     def add_path(self, path):
         self._paths.append(path)
 
@@ -115,14 +117,21 @@ class Controller:
 
     def _generate_applications(self, board):
 
-        for z in self._zones:
-            z.generate_applications(board)
+        for s in self._sites:
 
+            if s.get_zone_type() == zone_types.residential:
+                continue
+
+            s.generate_applications(board)
 
     def _generate_new_adverts(self, board):
 
-        for z in self._zones:
-            z.generate_adverts(board)
+        for s in self._sites:
+
+            if s.get_zone_type() == zone_types.residential:
+                continue
+
+            s.generate_adverts(board)
 
 
     def _get_sites_needing_i(self):
@@ -195,60 +204,42 @@ class Controller:
 
     def display(self):
         
-    #board_mask = play_area.get_mask()
-
-    #xmax_board = play_area.get_xmax()
-    #ymax_board = play_area.get_ymax()
-
-    #xmax_farm = farm.get_xmax()
-    #ymax_farm = farm.get_ymax()
-
-    #xmax = int(max(xmax_board, xmax_farm))
-    #ymax = int(max(ymax_board, ymax_farm))
-
-    #farm_mask = np.pad(farm_mask, [(0, xmax-xmax_farm), (0, ymax-ymax_farm)])
-    #farm_mask[farm_mask == 1] = 2
-
-    #comb_mask = np.maximum(farm_mask, board_mask)
-    ##comb_mask = comb_mask.astype(int)
-    #for line in board_mask.tolist():
-    #    print (''.join(['%d' %x for x in line]))
+        display_items = [self._shape]
+        display_items += self._paths
+        display_items += self._zones
+        display_items += self._sites
 
         layout = []
-        x, y = self._shape.get_xy()
         x_span = self._shape.get_x_span()
         y_span = self._shape.get_y_span()
 
-        for iy in range(y, y_span):
-            this_layout = []
-            for ix in range(x, x_span):
-                letter = None
-                pt = Point(ix, iy)
-                for z in self._zones:
-                    site_coords = z.get_sites_coords()
-                    #print (site_coords)
-                    if z.get_shape().intersects(pt):
-                        if z.get_type() == zone_types.farm:
-                            if pt in site_coords:
-                                letter = 'F'
-                            else:
-                                letter = 'f'
+        comb_mask = None
+        values = {0 : ' '}
+        for iobj, obj in enumerate(display_items):
 
-                for r in self._paths:
-                    if r.get_shape().intersects(pt):
-                        letter = 'r'
-                
-                if letter is None:
-                    letter = config.EMPTY_BLOCK
+            mask = obj.get_mask()
 
-                this_layout.append(letter)
+            xmax = obj.get_xmax()
+            ymax = obj.get_ymax()
 
-                            
-            layout.append(this_layout)
+            pad_x = x_span - xmax
+            pad_y = y_span - ymax
 
+            mask = np.pad(mask, [(0, pad_x), (0, pad_y)])
 
-        for line in layout:
-            print(''.join(line))
+            mask[mask == 1] = iobj+1
+            values[iobj+1] = obj.get_display_repr()
+            
+            if comb_mask is None:
+                comb_mask = mask
+            else:
+                comb_mask = np.maximum(comb_mask, mask)
+
+        
+        comb_rows = comb_mask.transpose().tolist()
+
+        for row in comb_rows:
+            print (''.join([values[int(x)] for x in row]))
 
     def immigrate(self):
 
@@ -274,6 +265,7 @@ class Controller:
                 resident = self._generate_resident(new_site)
 
                 new_site.add_resident(resident)
+                self._sites.append(new_site)
 
 
     def _generate_resident(self, new_site):
@@ -283,16 +275,19 @@ class Controller:
         return resident
 
 
-
-
-
     def _generate_site(self, ztype, site):
 
         zone = self.get_zones(zone_id = site['zid'])
+        print ('Zone bounds')
+
 
         shape = random.choice(config.site_shapes)
 
-        site = farm(1, 1, shape)
+
+        trans_shape = affinity.translate(shape, xoff=site.x, yoff=site.y)
+
+
+        site = farm(1, 1, trans_shape)
 
         site.set_zone(zone)
         zone.add_site(site)
@@ -313,7 +308,9 @@ class Controller:
         if scores.shape[0] == 0:
             print ('Was not able to generate scores')
 
-        return scores.iloc[random.randint(0, scores.shape[0])]
+        rand_score = scores.iloc[random.randint(0, scores.shape[0])]
+
+        return rand_score
 
     def get_scores(self, ztype, occupied_sites):
 

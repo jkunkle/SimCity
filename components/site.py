@@ -1,6 +1,8 @@
 import uuid
 from base import Shape
 
+import config
+
 class site(Shape):
 
     def __init__(self, zone_type, shape):
@@ -14,6 +16,8 @@ class site(Shape):
         self_id = uuid.uuid4()
         self._zone = None
         self._residents = []
+
+        self.set_display_repr(config.SITE_BLOCK[self._zone_type.name])
 
     def set_zone(self, zone):
         self._zone = zone
@@ -39,4 +43,5 @@ class site(Shape):
     def add_sender_connection(self, other):
         self._sender_connections.append(other)
 
+    
 

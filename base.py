@@ -1,17 +1,23 @@
-from shapely.geometry import Polygon, LineString, box
+from shapely.geometry import Polygon, LineString, MultiLineString, box
 import numpy as np
+import config
 
 class Shape:
 
     def __init__(self, obj=None):
         #FIXME -- consider adding addtl info storage
         self._object = obj
+        self._display_repr = None
+
+    def set_display_repr(self, drepr):
+        self._display_repr = drepr
+    def get_display_repr(self):
+        return self._display_repr
 
     def get_mask(self):
-        xmax = self._object.bounds[2]
-        ymax = self._object.bounds[3]
-        print (xmax)
-        print (ymax)
+        xmax = self._object.bounds[2]+1
+        ymax = self._object.bounds[3]+1
+
         mask = np.zeros([int(xmax), int(ymax)])
 
         for ix, iy in self.iter_points():
@@ -43,17 +49,24 @@ class Shape:
 
         end_add = 0
         if isinstance(self._object, LineString):
-            end_add = 1
+            for c in self._object.coords:
+                yield c
 
-        bounds = self._object.bounds
-        x0 = int(bounds[0])
-        y0 = int(bounds[1])
-        x1 = int(bounds[2])
-        y1 = int(bounds[3])
+        elif isinstance(self._object, MultiLineString):
+            for line in self._object.geoms:
+                for c in line.coords:
+                    yield tuple([int(x) for x in c])
 
-        for ix in range(x0, x1+end_add):
-            for iy in range(y0, y1+end_add):
-                yield (ix, iy)
+        else:
+            bounds = self._object.bounds
+            x0 = int(bounds[0])
+            y0 = int(bounds[1])
+            x1 = int(bounds[2])
+            y1 = int(bounds[3])
+
+            for ix in range(x0, x1+end_add):
+                for iy in range(y0, y1+end_add):
+                    yield (ix, iy)
 
     def get_area(self):
         if self._object is None:
@@ -66,6 +79,8 @@ class board_area(Shape):
     def __init__(self, x=None, y=None, x_span=None, y_span=None):
 
         super().__init__(box(x, y, x_span, y_span))
+
+        self.set_display_repr(config.EMPTY_BLOCK)
 
         self._x = x
         self._y = y

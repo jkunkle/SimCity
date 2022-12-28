@@ -7,7 +7,7 @@ HOUSING_COMMERCIAL_SLOTS = [1, 2, 3]
 
 ATTRACTION_FARM = functions.sigmoid(offset=0.4, slope=20, scale=0.1, intercept=0)
 DISTANCE_SCORE_FARM = functions.sigmoid(offset=3, slope=3, scale=-1, intercept=1)
-PATH_SCORE_FARM = functions.lookup({0:1}, 0)
+PATH_SCORE_FARM = functions.lookup({1:1}, 0)
 
 site_shapes = [
     Polygon([(0,0), (0,1), (1,1), (1,0), (0,0)]),
@@ -19,6 +19,16 @@ site_shapes = [
 distance_match = functions.exp(1, 40, 0.001)
 
 EMPTY_BLOCK = '\u2591'
-ZONE_FARM_BLOCK = 'f'
-SITE_FARM_BLOCK = 'F'
-ROAD_DIRT_BLOCK = 'r'
+ZONE_BLOCK = {
+    'farm' : 'f',
+    'residential' : 'r',
+    'commercial' : 'c',
+    'industrial' : 'i',
+}
+SITE_BLOCK = {
+    'farm' : 'F',
+    'residentail' : 'R',
+    'commercial'  : 'C',
+    'industrial' : 'I'
+}
+ROAD_DIRT_BLOCK = 'x'
