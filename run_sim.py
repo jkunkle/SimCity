@@ -13,8 +13,7 @@ def main():
     road = make_road_segment((0, 50), (100, 50), connection_types.dirt_road)
     #road = make_road_segment((50, 0), (50, 100), connection_types.dirt_road)
 
-    farm = zone(zone_types.farm, [0, 50, 20, 60])
-    farm_mask = farm.get_mask()
+    farm = zone(zone_types.farm, [0, 51, 20, 60])
 
     adv = AdvertBoard()
 
@@ -23,7 +22,8 @@ def main():
 
     cont = Controller(play_area)
     cont.add_path(road)
-    cont.add_zone(farm)
+
+    cont.add_empty_zone(farm)
 
     time = 0
     while True:
@@ -33,6 +33,7 @@ def main():
         cont.update_connections(adv)
 
         cont.immigrate()
+        print (cont._sites)
         cont.display()
 
 

@@ -35,6 +35,8 @@ class zone(Shape):
         self._sites = []
         #FIXME -- add dynamic ID
         self._id = uuid.uuid4()
+        # needs to
+        self.set_display_repr(config.ZONE_BLOCK[self._type.name])
 
     def add_site(self, site):
         self._sites.append(site)
@@ -104,26 +106,6 @@ class zone(Shape):
 
     def get_sites(self):
         return self._sites
-
-
-    def generate_adverts(self, board):
-
-        if self._type == zone_types.residential:
-            return
-
-        for s in self._sites:
-            s.post_slot_advert(board)
-            s.post_job_advert(board)
-            
-    def generate_applications(self, board):
-
-        if self._type == zone_types.residential:
-            apps = board.get_job_adverts()
-        else:
-            apps = board.get_slot_adverts()
-        
-        for s in self._sites:
-            s.generate_applications(apps)
 
 
     def update_sites(self, global_parameters):

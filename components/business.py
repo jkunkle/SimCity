@@ -16,7 +16,7 @@ class output_slot:
         self._posted = True
 
     def is_posted(self):
-        return self._posted
+        return self._is_posted
 
     def is_filled(self):
         return (self._destination is not None)
@@ -69,6 +69,12 @@ class business(site):
 
     def add_slot_application(self, app):
         self._slot_applications.append(app)
+
+    def generate_adverts(self, board):
+
+        self.post_slot_advert(board)
+        self.post_job_advert(board)
+
 
     def post_job_advert(self, board):
 
@@ -139,6 +145,9 @@ class business(site):
                     advert_scored.append((score, a))
 
         advert_scored.sort(reverse=True)
+
+        if not advert_scored:
+            return
 
         self._send_slot_application(advert_scored[0][1])
 
