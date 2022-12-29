@@ -13,7 +13,7 @@ class site(Shape):
         self._reciever_connections = []
         self._sender_connections = []
         self._survival_time = 10
-        self_id = uuid.uuid4()
+        self._id = uuid.uuid4()
         self._zone = None
         self._residents = []
 
