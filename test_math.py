@@ -3,6 +3,19 @@ from scipy.stats import logistic
 import matplotlib.pyplot as plt
 import math
 import functions
+import config
+
+def test_config():
+
+    X = np.linspace(-10, 10, 1000)
+    func = config.DISTANCE_SCORE_FARM
+
+    y = [func.eval(x) for x in X]
+
+    plt.plot(X, y)
+    plt.show()
+
+
 def test_logistic():
 
     X = np.linspace(-10, 10, 1000)
@@ -16,6 +29,6 @@ def test_logistic():
 
 
 
-test_logistic()
+test_config()
 
 
