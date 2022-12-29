@@ -243,9 +243,12 @@ class Controller:
 
     def immigrate(self):
 
+        # FIXME may want to schedule multiple
+        # calculators to determine immigration
         zone_density = self._get_zone_density()
 
         immi_stats = {}
+        # determine immigration for each zone type
         for tp, density in zone_density.items():
 
             prob = self.get_probability(tp, density)
@@ -275,22 +278,22 @@ class Controller:
         return resident
 
 
-    def _generate_site(self, ztype, site):
+    def _generate_site(self, ztype, site_loc):
 
-        zone = self.get_zones(zone_id = site['zid'])
-        print ('Zone bounds')
-
-
-        shape = random.choice(config.site_shapes)
+        zone = self.get_zones(zone_id = site_loc['zid'])
 
 
-        trans_shape = affinity.translate(shape, xoff=site.x, yoff=site.y)
+        add_success = False
+        while not add_success:
+            shape = random.choice(config.site_shapes)
 
+            trans_shape = affinity.translate(shape, xoff=site_loc.x, yoff=site_loc.y)
 
-        site = farm(1, 1, trans_shape)
+            site = farm(1, 1, trans_shape)
 
-        site.set_zone(zone)
-        zone.add_site(site)
+            site.set_zone(zone)
+
+            add_success = zone.add_site_with_check(site)
 
         return site
 
@@ -308,7 +311,7 @@ class Controller:
         if scores.shape[0] == 0:
             print ('Was not able to generate scores')
 
-        rand_score = scores.iloc[random.randint(0, scores.shape[0])]
+        rand_score = scores.iloc[random.randint(0, scores.shape[0]-1)]
 
         return rand_score
 
@@ -353,9 +356,8 @@ class Controller:
             min_dist = min(dists)
 
             if ztype == zone_types.farm:
-
                 site_scores.append
-                return config.DISTANCE_SCORE_FARM(min_dist)
+                return config.DISTANCE_SCORE_FARM.eval(min_dist)
 
 
     def _get_path_score(self, pt):

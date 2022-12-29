@@ -1,4 +1,5 @@
 from components.site import site
+import communication
 
 class output_slot:
 

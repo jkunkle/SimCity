@@ -38,8 +38,21 @@ class zone(Shape):
         # needs to
         self.set_display_repr(config.ZONE_BLOCK[self._type.name])
 
-    def add_site(self, site):
+    def add_site_with_check(self, site):
+
+        site_bounds = site.get_bounds()
+        zone_bounds = self.get_bounds()
+
+        if (site_bounds[0] < zone_bounds[0] or 
+            site_bounds[1] < zone_bounds[1] or
+            site_bounds[2] > zone_bounds[2] or
+            site_bounds[3] > zone_bounds[3]):
+
+            return False
+
         self._sites.append(site)
+
+        return True
 
     def get_total_area(self):
         return self.get_area()
