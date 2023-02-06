@@ -1,11 +1,12 @@
 import random 
 from scipy.spatial.distance import cityblock
+from shapely.geometry import Point
 
 def generate_points_in_polygon(polygon, n_points):
     points = []
     minx, miny, maxx, maxy = polygon.bounds
-    while len(points) < n_point:
-        pnt = Point(random.range(minx, maxx), random.range(miny, maxy))
+    while len(points) < n_points:
+        pnt = Point(random.randint(minx, maxx), random.randint(miny, maxy))
         if polygon.contains(pnt):
             points.append(pnt)
     return points
