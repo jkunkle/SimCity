@@ -1,27 +1,11 @@
 import utils
 import uuid
 import config
-from enum import Enum
 from shapely.geometry import box
 from base import Shape
+from definitions import zone_types
 
 import communication
-
-#class zone_id:
-#
-#    self._zid = 0
-#
-#    @staticmethod
-#    def id(self):
-#        self._zid += 1
-#        return self._zid
-
-class zone_types(Enum):
-
-    residential = 1
-    commercial = 2
-    industrial = 3
-    farm = 4
 
 
 class zone(Shape):
@@ -40,17 +24,25 @@ class zone(Shape):
 
     def add_site_with_check(self, site):
 
-        site_bounds = site.get_bounds()
-        zone_bounds = self.get_bounds()
+        #site_bounds = site.get_bounds()
+        #zone_bounds = self.get_bounds()
 
-        if (site_bounds[0] < zone_bounds[0] or 
-            site_bounds[1] < zone_bounds[1] or
-            site_bounds[2] > zone_bounds[2] or
-            site_bounds[3] > zone_bounds[3]):
+        #if (site_bounds[0] < zone_bounds[0] or 
+        #    site_bounds[1] < zone_bounds[1] or
+        #    site_bounds[2] > zone_bounds[2] or
+        #    site_bounds[3] > zone_bounds[3]):
 
+        #    return False
+
+        #point = utils.generate_points_in_polygon(self._avalable_shape, 1)
+
+        site_shape = site.get_shape()
+
+        if self._avalable_shape.contains(site_shape):
+            self._avalable_shape = self._avalable_shape - site_shape
+            self._sites.append(site)
+        else:
             return False
-
-        self._sites.append(site)
 
         return True
 
@@ -223,20 +215,6 @@ class zone(Shape):
         new_site = business(zone_types.industrial, n_jobs, n_capacity, n_suppliers, shape)
 
         self._place_site(new_site)
-
-    def _place_site(self, site):
-
-        site_shape = site.get_shape()
-
-        point = utils.generate_points_in_polygon(self._avalable_shape, 1)
-
-        site.translate(point)
-
-        if self._avalable_shape.contains(site_shape):
-            self._avalable_shape = self._avalable_shape - site_shape
-            self._sites.append(site)
-        else:
-            print ('WARNING -- could not place site')
 
     def update_connections(self, existing_sites):
         raise NotImplementedError
