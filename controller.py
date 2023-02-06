@@ -252,19 +252,32 @@ class Controller:
         for tp, density in zone_density.items():
 
             prob = self.get_probability(tp, density)
+            #print (f' got prob {prob} density {density}')
 
             n_immi = poisson.rvs(prob)
 
             for iimmi in range(0, n_immi):
                 all_type_zones = self.get_zones(tp)
 
+                new_site = None
+                while new_site is None:
+                    # FIXME -- shape shoud depend on purchase price
+                    shape = random.choice(config.site_shapes)
+    
+                    best_site = self.find_best_site(tp, shape)
+                    if best_site is None:
+                        break
+
+                    try:
+                        new_site = self._generate_site(tp, shape, best_site)
+                    except RuntimeError:
+                        new_site = None
+
+                if new_site is None:
+                    continue
+
                 # FIXME -- do we need additional info to 
-                # generate occupant
-
-                best_site = self.find_best_site(tp)
-
-                new_site = self._generate_site(tp, best_site)
-
+                # generate occupant?
                 resident = self._generate_resident(new_site)
 
                 new_site.add_resident(resident)
@@ -278,44 +291,43 @@ class Controller:
         return resident
 
 
-    def _generate_site(self, ztype, site_loc):
+    def _generate_site(self, ztype, shape, site_loc):
 
         zone = self.get_zones(zone_id = site_loc['zid'])
 
+        trans_shape = affinity.translate(shape, xoff=site_loc.x, yoff=site_loc.y)
 
-        add_success = False
-        while not add_success:
-            shape = random.choice(config.site_shapes)
+        site = farm(1, 1, trans_shape)
 
-            trans_shape = affinity.translate(shape, xoff=site_loc.x, yoff=site_loc.y)
+        site.set_zone(zone)
 
-            site = farm(1, 1, trans_shape)
-
-            site.set_zone(zone)
-
-            add_success = zone.add_site_with_check(site)
+        add_success = zone.add_site_with_check(site)
+        if not add_success:
+            raise RuntimeError('Failed to add site')
 
         return site
 
-    def find_best_site(self, ztype):
+    def find_best_site(self, ztype, shape):
 
         # get all occupied sites from all zones
         occupied_sites = []
         for z in self._zones:
             occupied_sites += z.get_sites()
         
-        scores = self.get_scores(ztype, occupied_sites)
+        scores = self.get_scores(ztype, shape, occupied_sites)
+
+        scores = scores[scores['comb_score'] > 0]
 
         scores = scores[scores['comb_score'] == scores['comb_score'].max()]
 
         if scores.shape[0] == 0:
-            print ('Was not able to generate scores')
+            return None
 
         rand_score = scores.iloc[random.randint(0, scores.shape[0]-1)]
 
         return rand_score
 
-    def get_scores(self, ztype, occupied_sites):
+    def get_scores(self, ztype, shape, occupied_sites):
 
         zones = self.get_zones(ztype)
 
@@ -328,7 +340,13 @@ class Controller:
                 pt = Point(x, y)
 
                 scores = self._get_path_score(pt)
+
                 scores['neighbor_score'] = self._get_neighbor_score(ztype, pt, occupied_sites)
+
+                if not occupied_sites:
+                    scores['overlap_score'] = 1
+                else:
+                    scores['overlap_score'] = min([int(not s.get_shape().contains(pt)) for s in occupied_sites])
 
                 scores['zid'] = zid
                 scores['x'] = x
@@ -336,7 +354,7 @@ class Controller:
                 scores_df.append(scores)
 
         comb_df = pd.concat(scores_df)
-        comb_df['comb_score'] = comb_df['neighbor_score'] * comb_df['path_score']
+        comb_df['comb_score'] = comb_df['neighbor_score'] * comb_df['path_score'] * comb_df['overlap_score']
 
         return comb_df
 
@@ -345,19 +363,22 @@ class Controller:
         if not sites:
             return 1
 
-        site_scores = []
+        site_dists = []
         for site in sites:
             sid = site.get_id()
             dists = []
+            # FIXME -- can ask min distance between point and shape
             for x, y in site.iter_points():
                 opt = Point(x, y)
                 dists.append(pt.distance(opt))
 
             min_dist = min(dists)
 
-            if ztype == zone_types.farm:
-                site_scores.append
-                return config.DISTANCE_SCORE_FARM.eval(min_dist)
+            site_dists.append(min_dist)
+
+        min_dist = min(site_dists)
+        if ztype == zone_types.farm:
+            return config.DISTANCE_SCORE_FARM.eval(min_dist)
 
 
     def _get_path_score(self, pt):

@@ -33,7 +33,6 @@ def main():
         cont.update_connections(adv)
 
         cont.immigrate()
-        print (cont._sites)
         cont.display()
 
 
