@@ -8,11 +8,13 @@ import config
 def test_config():
 
     X = np.linspace(-10, 10, 1000)
-    func = config.DISTANCE_SCORE_FARM
+    #func = config.DISTANCE_SCORE_FARM
+    func = config.ATTRACTION_FARM
 
     y = [func.eval(x) for x in X]
 
     plt.plot(X, y)
+    #plt.yscale('log')
     plt.show()
 
 
