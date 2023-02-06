@@ -252,31 +252,32 @@ class Controller:
         for tp, density in zone_density.items():
 
             prob = self.get_probability(tp, density)
+            #print (f' got prob {prob} density {density}')
 
             n_immi = poisson.rvs(prob)
 
             for iimmi in range(0, n_immi):
                 all_type_zones = self.get_zones(tp)
 
-                best_site = None
-                while best_site is None:
+                new_site = None
+                while new_site is None:
                     # FIXME -- shape shoud depend on purchase price
                     shape = random.choice(config.site_shapes)
     
-                    try:
-                        best_site = self.find_best_site(tp, shape)
-                    except RuntimeError:
-                        best_site = None
+                    best_site = self.find_best_site(tp, shape)
+                    if best_site is None:
+                        break
 
-                new_site = None
-                while new_site is None:
                     try:
                         new_site = self._generate_site(tp, shape, best_site)
                     except RuntimeError:
                         new_site = None
 
+                if new_site is None:
+                    continue
+
                 # FIXME -- do we need additional info to 
-                # generate occupant
+                # generate occupant?
                 resident = self._generate_resident(new_site)
 
                 new_site.add_resident(resident)
@@ -293,7 +294,6 @@ class Controller:
     def _generate_site(self, ztype, shape, site_loc):
 
         zone = self.get_zones(zone_id = site_loc['zid'])
-
 
         trans_shape = affinity.translate(shape, xoff=site_loc.x, yoff=site_loc.y)
 
@@ -321,7 +321,7 @@ class Controller:
         scores = scores[scores['comb_score'] == scores['comb_score'].max()]
 
         if scores.shape[0] == 0:
-            raise RuntimeError('Was not able to generate scores')
+            return None
 
         rand_score = scores.iloc[random.randint(0, scores.shape[0]-1)]
 
