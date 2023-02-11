@@ -286,10 +286,21 @@ class Controller:
 
     def _generate_resident(self, new_site):
 
-        res = resident(40, 3)
+        res_age = config.AGE_PDF_FARM.rand()
+        res = resident(res_age)
 
-        return resident
+        site_type = new_site.get_zone_type()
 
+        for skill, func in config.DEFAULT_SKILL_DISTS.items():
+            res.set_skill(
+                skill, 
+                func.rand()[0] + config.SKILL_MODS.get(skill, 0)
+            )
+
+        for need, val in config.DEFAULT_NEED_RATES.items():
+            res.set_need_rate(need, val)
+
+        return res
 
     def _generate_site(self, ztype, shape, site_loc):
 
