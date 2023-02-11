@@ -1,5 +1,8 @@
 import numpy as np
 import math
+import sys
+from scipy.stats import truncnorm
+
 class exp:
 
     def __init__(self, scale, mean, offset):
@@ -30,6 +33,34 @@ class sigmoid:
         else:
             z = math.exp(self._slope*(self._offset-inp))
             return ((self._scale*z) / (1 + z)) + self._intercept
+
+
+class GaussPDF:
+
+    def __init__(self, mean, sigma, val_min=None, val_max=None):
+
+        self._mean = mean
+        self._sigma = sigma
+        if val_min is None:
+            self._cut_min = -1*sys.float_info.max
+        else:
+            self._cut_min = (val_min - self._mean)/self._sigma
+        if val_max is None:
+            self._cut_max = sys.float_info.max
+        else:
+            self._cut_max = (val_max - self._mean)/self._sigma
+
+    def rand(self, nrand=1):
+
+        return truncnorm.rvs(self._cut_min, self._cut_max, self._mean, self._sigma, nrand)
+
+
+class ConstPDF:
+
+    def __init__(self, val):
+        self._val = val
+    def rand(self):
+        return [self._val]
 
 
 class lookup:
