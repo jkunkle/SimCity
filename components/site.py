@@ -43,5 +43,4 @@ class site(Shape):
     def add_sender_connection(self, other):
         self._sender_connections.append(other)
 
-    
 

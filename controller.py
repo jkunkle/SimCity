@@ -1,4 +1,4 @@
-from components.zone import zone_types
+from definitions import zone_types
 from components.farm import farm
 from components.resident import resident
 import random
@@ -36,6 +36,7 @@ class Controller:
         self._zones = []
         self._sites = []
         self._paths = []
+        self._resources = []
         self._applications = []
 
     def add_empty_zone(self, zone):
@@ -43,6 +44,9 @@ class Controller:
 
     def add_path(self, path):
         self._paths.append(path)
+
+    def add_resource(self, res_type, shape):
+        self._resources.append(shape)
 
     def _collect_openings(self):
 
@@ -205,6 +209,7 @@ class Controller:
     def display(self):
         
         display_items = [self._shape]
+        display_items += self._resources
         display_items += self._paths
         display_items += self._zones
         display_items += self._sites
@@ -224,6 +229,8 @@ class Controller:
 
             pad_x = x_span - xmax
             pad_y = y_span - ymax
+            if pad_x < 0 or pad_y < 0:
+                raise ValueError("Object %s exceeds board boundary" %obj)
 
             mask = np.pad(mask, [(0, pad_x), (0, pad_y)])
 

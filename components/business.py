@@ -39,6 +39,7 @@ class business(site):
         self._needed_i_suppliers = needed_industrial_suppliers
         self._output_capacity = output_capacity
         self._total_jobs = total_jobs
+        self._output_var = 0
 
         # FIXME -- Add details as needed
         self._output_slots = [output_slot() for _ in range(0, self._output_capacity)]
@@ -70,6 +71,11 @@ class business(site):
 
     def add_slot_application(self, app):
         self._slot_applications.append(app)
+
+    def generate_output(self):
+        pass
+
+        # how to generate output
 
     def generate_adverts(self, board):
 

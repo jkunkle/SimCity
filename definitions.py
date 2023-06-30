@@ -32,4 +32,9 @@ class needs(Enum):
     happiness = 6
 
 
+class resource(Enum):
+
+    water = 1
+    forest = 2
+    #FIXME -- add addtl resources
 

@@ -96,6 +96,5 @@ class board_area(Shape):
         return self._y_span
 
     def get_area(self):
-
         return self.get_x_span()*self.get_y_span()
 

@@ -28,6 +28,16 @@ class ConnectionBase:
     def get_length(self):
         return self._shape.length
 
+class BodyOfWater(Shape):
+
+    def __init__(self, path):
+        self._path = path
+
+        super().__init__()
+
+        self._object = MultiLineString([path])
+        self.set_display_repr(config.WATER_BLOCK)
+
 
 class Road(Shape):
 

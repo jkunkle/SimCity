@@ -78,6 +78,7 @@ SITE_BLOCK = {
     'industrial' : 'I'
 }
 ROAD_DIRT_BLOCK = 'x'
+WATER_BLOCK = 'w'
 
 ProdColl = ProductCollection()
 ProdColl.add(Product('farm_product_1',zone_types.farm))
