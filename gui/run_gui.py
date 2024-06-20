@@ -1,48 +1,38 @@
+import argparse
+from controller import Controller
+import logging
+from PyQt5.QtWidgets import QApplication
+from gui import Window
+from components.board import Board
+import generators as gen
+from definitions import terrain 
 
-import tkinter as tk
-from tkinter import ttk
+def parse_args():
 
-def on_click(i,j,event):
+    parser = argparse.ArgumentParser()
 
-    new_color = 'red'
-    print (event)
-    if event.widget.cget('bg') == 'red':
-        new_color='black'
-    event.widget.config(bg=new_color)
+    parser.add_argument('--log-level', dest='log_level', default='WARNING', help='log level')
 
-def main():
+    args, _ = parser.parse_known_args()
 
-    gui = tk.Tk()
+    return args
 
-    gui_frame = ttk.Frame(gui)
+def main(log_level):
 
-    top_frame = ttk.Frame(gui_frame, width=200, height=10, borderwidth=5)
+    logging.basicConfig(level=log_level)
 
-    left_frame = ttk.Frame(gui_frame, width=10, height=200)
-
-    board_frame = ttk.Frame(gui_frame, width=190, height=190)
-
-    ok = ttk.Button(left_frame, text="Okay")
-    cancel = ttk.Button(left_frame, text="Cancel")
-
-    gui_frame.grid(column=0, row=0)
-    top_frame.grid(column=0, row=0, rowspan=2)
-    left_frame.grid(column=0, row=0, columnspan=2)
-    board_frame.grid(column=1, row=1)
-    name = ttk.Label(top_frame, text='time')
-
-    ok.grid(column=0, row=0)
-    cancel.grid(column=0, row=1)
-    name.grid(column=0, row=0)
-
-
-    for i in range(0, 10):
-        for j in range(0, 10):
-            L = tk.Label(board_frame,text='test',bg='grey')
-            L.grid(row=i,column=j)
-            L.bind('<Button-1>',lambda e,i=i,j=j: on_click(i,j,e))
-
-    gui.mainloop()
+    play_area = Board(0, 0, 50, 50)
+    
+    river = gen.generate_river(play_area)
+    play_area.add_terrain(river)
+    
+    cont = Controller(play_area)
+    
+    
+    app = QApplication([])
+    window = Window(cont)
+    
+    app.exec()
 
 if __name__ == '__main__':
-    main()
+    main(**vars(parse_args()))
