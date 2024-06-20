@@ -1,3 +1,9 @@
+"""
+definitions.py
+
+Basic enumerations and mapping between them.
+Should be independent of other modules
+"""
 
 from enum import Enum
 
@@ -7,7 +13,6 @@ class zone_types(Enum):
     commercial = 2
     industrial = 3
     farm = 4
-
 
 class skills(Enum):
 
@@ -21,6 +26,7 @@ class skills(Enum):
     medical = 8 # need?
     learning = 9
     selling = 10
+    cleaning = 11
 
 class needs(Enum):
 
@@ -31,10 +37,32 @@ class needs(Enum):
     partner = 5
     happiness = 6
 
+class health_elements(Enum):
 
-class resource(Enum):
+    movement = 1
+    manipulation = 2
+    sight = 3
+    talking = 4
 
-    water = 1
-    forest = 2
-    #FIXME -- add addtl resources
+class terrain(Enum):
+
+    meadow = 1
+    marsh = 2
+    forest = 3
+    stone = 4
+    beach = 5
+    water = 6
+    built_path = 7
+
+class connection_types(Enum):
+
+    dirt_road = 1
+    stone_road = 2
+    asphalt_road = 3
+    concrete_road = 4
+
+
+
+
+
 
