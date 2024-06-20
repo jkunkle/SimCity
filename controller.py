@@ -1,15 +1,21 @@
 from definitions import zone_types
-from components.farm import farm
-from components.resident import resident
+from components.farm import Farm
+from components.resident import Resident
 import random
 import utils
 import pandas as pd
 import numpy as np
+import logging
 import PySimpleGUI as sg
 from shapely.geometry import Point
 from shapely import affinity
 from scipy.stats import poisson
+
+from pathfinder import PathFinder
+
 import config
+
+logger = logging.getLogger(__name__)
 
 class AdvertBoard:
 
@@ -27,26 +33,34 @@ class AdvertBoard:
         return [a for a in self._adverts if a.is_slot_advert()]
 
 
-class Controller:
+class Controller():
 
-    def __init__(self, shape):
+    def __init__(self, board):
 
-        self._shape = shape
         self._export_rate = 0.1
-        self._zones = []
-        self._sites = []
-        self._paths = []
-        self._resources = []
         self._applications = []
+        self._adv_bd = AdvertBoard()
+        self._time = 0
+        self._board = board
+        self._path_finder = PathFinder(board)
 
-    def add_empty_zone(self, zone):
-        self._zones.append(zone)
+    @property
+    def board(self):
+        return self._board
 
-    def add_path(self, path):
-        self._paths.append(path)
 
-    def add_resource(self, res_type, shape):
-        self._resources.append(shape)
+    #def add_path(self, path):
+
+    #    # FIXME -- if new path is of same type and adjacent
+    #    # then append to that object rather than list of paths
+    #    #related_paths = filter(lambda x: x.get_type() == path.get_type(), self._paths)
+    #    self.board.add_path(path)
+
+    #def add_resource(self, res_type, shape):
+    #    self._resources.append(shape)
+
+    #def get_resources(self):
+    #    return self._resources
 
     def _collect_openings(self):
 
@@ -56,41 +70,25 @@ class Controller:
 
         return all_openings
 
-    def get_zones(self, ztype=None, zone_id=None):
+    def get_time(self):
+        return self._time
 
-        if zone_id is not None:
-            match_zones = [z for z in self._zones if z.get_id() == zone_id]
-            if len(match_zones) == 0:
-                print ('Failed to find zone with ID, ', id)
-                return None
-            if len(match_zones) > 1:
-                print ('Multiple zones foud with ID, ', id)
-                return None
+    def run_step(self):
+        self._time += 1
 
-            return match_zones[0]
+        #if time % 100 == 0:
+        #    self.update_connections()
 
-        if ztype is not None:
-            return [z for z in self._zones if z.get_type() == ztype]
+        for r in self.board.get_residents():
+            r.increment(1)
 
-        return self._zones
+        self.immigrate()
 
 
-    def _get_i_zones(self):
-        return [z for z in self._zones if z.get_type() == zone_types.industrial]
+    def update_connections(self):
 
-    def _get_c_zones(self):
-        return [z for z in self._zones if z.get_type() == zone_types.commercial]
-
-    def _get_r_zones(self):
-        return [z for z in self._zones if z.get_type() == zone_types.residential]
-
-    def _get_f_zones(self):
-        return [z for z in self._zones if z.get_type() == zone_types.farm]
-
-    def update_connections(self, board):
-
-        self._generate_applications(board)
-        self._generate_new_adverts(board)
+        self._generate_applications(self._adv_bd)
+        self._generate_new_adverts(self._adv_bd)
         needed_i_sites = self._get_sites_needing_i()
         existing_i_sites = self._get_i_sites_with_slots()
 
@@ -105,6 +103,10 @@ class Controller:
         existing_r_sites = self._get_open_applicants()
 
         self._match_sites(existing_r_sites, needed_r_sites)
+
+        for s in self._sites:
+            for r in s.get_residents():
+                r.update_connections()
 
     def _match_sites(self, existing, needed):
 
@@ -141,9 +143,9 @@ class Controller:
     def _get_sites_needing_i(self):
 
         sites = []
-        for z in self._get_i_zones():
+        for z in self.board.get_i_zones():
             sites += z.get_sites_needing_i()
-        for z in self._get_c_zones():
+        for z in self.board.get_c_zones():
             sites += z.get_sites_needing_i()
 
         return sites
@@ -151,19 +153,19 @@ class Controller:
     def _get_sites_needing_c(self):
 
         sites = []
-        for z in self._get_i_zones():
+        for z in self.board.get_i_zones():
             sites += z.get_sites_needing_c()
-        for z in self._get_c_zones():
+        for z in self.board.get_c_zones():
             sites += z.get_sites_needing_c()
-        for z in self._get_r_zones():
+        for z in self.board.get_r_zones():
             sites += z.get_sites_needing_c()
 
     def _get_sites_needing_jobs(self):
 
         sites = []
-        for z in self._get_c_zones():
+        for z in self.board.get_c_zones():
             sites.append(z.get_sites_with_remaining_capacity())
-        for z in self._get_i_zones():
+        for z in self.board.get_i_zones():
             sites.append(z.get_sites_with_remaining_capacity())
 
         return sites
@@ -172,7 +174,7 @@ class Controller:
     def _get_open_applicants(self):
 
         sites = []
-        for z in self._get_r_zones():
+        for z in self.board.get_r_zones():
             sites += z.get_sites_with_open_applications()
 
         return sites
@@ -180,7 +182,7 @@ class Controller:
     def _get_i_sites_with_slots(self):
 
         sites = []
-        for z in self._get_i_zones():
+        for z in self.board.get_i_zones():
             sites += z.get_sites_with_remaining_capacity()
 
         return sites
@@ -188,35 +190,34 @@ class Controller:
     def _get_c_sites_with_slots(self):
 
         sites = []
-        for z in self._get_c_zones():
+        for z in self.board.get_c_zones():
             sites += z.get_sites_with_remaining_capacity()
 
         return sites
         
 
     def update_sites(self):
-
         get_open_jobs()
         get_population()
         get_commercial_capacity()
         get_commercial_output()
         get_industrial_capacity()
 
-        for zone in self._zones:
+        for zone in self.board.get_zones():
             zone.update_sites(self._parameters)
 
 
     def display(self):
         
-        display_items = [self._shape]
+        display_items = [self.get_shape()]
         display_items += self._resources
         display_items += self._paths
         display_items += self._zones
         display_items += self._sites
 
         layout = []
-        x_span = self._shape.get_x_span()
-        y_span = self._shape.get_y_span()
+        x_span = self.get_shape().get_x_span()
+        y_span = self.get_shape().get_y_span()
 
         comb_mask = None
         values = {0 : ' '}
@@ -224,8 +225,8 @@ class Controller:
 
             mask = obj.get_mask()
 
-            xmax = obj.get_xmax()
-            ymax = obj.get_ymax()
+            xmax = obj.xmax()
+            ymax = obj.ymax()
 
             pad_x = x_span - xmax
             pad_y = y_span - ymax
@@ -252,26 +253,24 @@ class Controller:
 
         # FIXME may want to schedule multiple
         # calculators to determine immigration
-        zone_density = self._get_zone_density()
+        zone_density = self.board.get_zone_density()
 
-        immi_stats = {}
+        immi_zones = self._get_immigration_by_zone_type(zone_density)
         # determine immigration for each zone type
-        for tp, density in zone_density.items():
+        for tp, n_immi in immi_zones.items():
 
-            prob = self.get_probability(tp, density)
-            #print (f' got prob {prob} density {density}')
-
-            n_immi = poisson.rvs(prob)
+            if n_immi > 0:
+                logger.debug('immigrate %d', n_immi)
 
             for iimmi in range(0, n_immi):
-                all_type_zones = self.get_zones(tp)
+                all_type_zones = self.board.get_zones(tp)
 
                 new_site = None
                 while new_site is None:
                     # FIXME -- shape shoud depend on purchase price
                     shape = random.choice(config.site_shapes)
     
-                    best_site = self.find_best_site(tp, shape)
+                    best_site = self.find_best_site(tp)
                     if best_site is None:
                         break
 
@@ -279,22 +278,40 @@ class Controller:
                         new_site = self._generate_site(tp, shape, best_site)
                     except RuntimeError:
                         new_site = None
+                        break
 
                 if new_site is None:
                     continue
 
+                print ('Generated site')
+                print (new_site)
                 # FIXME -- do we need additional info to 
                 # generate occupant?
                 resident = self._generate_resident(new_site)
+                resident.set_path_finder(self._path_finder)
+                print ('Generated resident')
+                print (resident)
 
                 new_site.add_resident(resident)
-                self._sites.append(new_site)
 
+    def _get_immigration_by_zone_type(self, zone_density):
+
+        immi_stats = {}
+        # determine immigration for each zone type
+        for tp, density in zone_density.items():
+
+            prob = self._get_probability(tp, density)
+            logging.debug(f' got prob %f density %f', prob, density)
+
+            immi_stats[tp] = poisson.rvs(prob)
+
+        return immi_stats
 
     def _generate_resident(self, new_site):
 
+        # FIXME
         res_age = config.AGE_PDF_FARM.rand()
-        res = resident(res_age)
+        res = Resident(res_age)
 
         site_type = new_site.get_zone_type()
 
@@ -307,35 +324,43 @@ class Controller:
         for need, val in config.DEFAULT_NEED_RATES.items():
             res.set_need_rate(need, val)
 
+        logger.debug('NEW SITE SHAPE')
+        logger.debug(new_site.shape)
+        res.location = (new_site.shape.x, new_site.shape.y)
+
         return res
 
     def _generate_site(self, ztype, shape, site_loc):
 
-        zone = self.get_zones(zone_id = site_loc['zid'])
+        zone = self.board.get_zones(zone_id = site_loc['zid'])
 
         trans_shape = affinity.translate(shape, xoff=site_loc.x, yoff=site_loc.y)
+        print ('Create site at location')
+        print (trans_shape)
 
-        site = farm(1, 1, trans_shape)
+        site = Farm(1, 1, trans_shape)
 
         site.set_zone(zone)
 
         add_success = zone.add_site_with_check(site)
         if not add_success:
+            print ('Failed to add')
             raise RuntimeError('Failed to add site')
 
         return site
 
-    def find_best_site(self, ztype, shape):
+    def find_best_site(self, ztype):
 
         # get all occupied sites from all zones
         occupied_sites = []
-        for z in self._zones:
-            occupied_sites += z.get_sites()
+        for z in self.board.get_zones():
+            occupied_sites += z.sites
         
-        scores = self.get_scores(ztype, shape, occupied_sites)
+        scores = self.get_scores(ztype, occupied_sites)
 
         scores = scores[scores['comb_score'] > 0]
 
+        print (scores)
         scores = scores[scores['comb_score'] == scores['comb_score'].max()]
 
         if scores.shape[0] == 0:
@@ -345,33 +370,36 @@ class Controller:
 
         return rand_score
 
-    def get_scores(self, ztype, shape, occupied_sites):
+    def get_scores(self, ztype, occupied_sites):
 
-        zones = self.get_zones(ztype)
+        zones = self.board.get_zones(ztype)
 
         scores_df = []
         for z in zones:
 
-            zid = z.get_id()
+            zid = z.id
 
             for x, y in z.iter_points():
                 pt = Point(x, y)
 
-                scores = self._get_path_score(pt)
+                scores = {}
+                scores['zid'] = zid
+                scores['x'] = x
+                scores['y'] = y
+
+                scores['path_score'] = self._get_path_score(pt)
 
                 scores['neighbor_score'] = self._get_neighbor_score(ztype, pt, occupied_sites)
 
                 if not occupied_sites:
                     scores['overlap_score'] = 1
                 else:
-                    scores['overlap_score'] = min([int(not s.get_shape().contains(pt)) for s in occupied_sites])
+                    scores['overlap_score'] = min([int(not s.shape.contains(pt)) for s in occupied_sites])
 
-                scores['zid'] = zid
-                scores['x'] = x
-                scores['y'] = y
                 scores_df.append(scores)
 
-        comb_df = pd.concat(scores_df)
+        comb_df = pd.DataFrame.from_records(scores_df)
+        # FIXME
         comb_df['comb_score'] = comb_df['neighbor_score'] * comb_df['path_score'] * comb_df['overlap_score']
 
         return comb_df
@@ -383,9 +411,8 @@ class Controller:
 
         site_dists = []
         for site in sites:
-            sid = site.get_id()
+            sid = site.id
             dists = []
-            # FIXME -- can ask min distance between point and shape
             for x, y in site.iter_points():
                 opt = Point(x, y)
                 dists.append(pt.distance(opt))
@@ -403,48 +430,31 @@ class Controller:
 
         # do we need scores for all paths?
         scores = []
-        for p in self._paths:
-
-            pid = p.get_id()
+        for p in self.board.paths:
 
             dist = p.get_shape().distance(pt)
 
             #score = dist
             score = config.PATH_SCORE_FARM.eval(dist)
 
-            scores.append({
-                'pid' : pid,
-                'path_score' : score}
-            )
+            scores.append(score)
 
-        return pd.DataFrame.from_records(scores)
+        if not scores:
+            return 1
+        else:
+            return min(scores)
 
 
-    def get_probability(self, ztype, density):
+    def _get_probability(self, ztype, density):
 
         if ztype == zone_types.farm:
             prob = config.ATTRACTION_FARM.eval(density)
             return prob
         else:
+            raise NotImplementedError('Must implement other zone types')
             return 0
-
-    def _get_zone_density(self):
-
-        result = {}
-        for z in self._zones:
-            tp = z.get_type()
-
-            den = z.get_total_area()
-            num = den - z.get_available_area()
-
-            result.setdefault(tp, []).append((num, den))
-
-        density = {}
-        for tp, vals in result.items():
-            try:
-                density[tp] = sum([v[0] for v in vals])/sum([v[1] for v in vals])
-            except ZeroDivisionError:
-                density[tp] = None
-
-        return density
             
+    def get_movement_cost(self, point):
+        pass
+        # cannot know the movement cost
+        # without knowing the mods
