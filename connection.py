@@ -1,17 +1,10 @@
 from enum import Enum
 import numpy as np
 import uuid
-from shapely.geometry import LineString, MultiLineString
+from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
 from base import Shape
 
 import config
-
-class connection_types(Enum):
-
-    dirt_road = 1
-    stone_road = 2
-    asphalt_road = 3
-    concrete_road = 4
 
 class ConnectionBase:
 
@@ -28,17 +21,6 @@ class ConnectionBase:
     def get_length(self):
         return self._shape.length
 
-class BodyOfWater(Shape):
-
-    def __init__(self, path):
-        self._path = path
-
-        super().__init__()
-
-        self._object = MultiLineString([path])
-        self.set_display_repr(config.WATER_BLOCK)
-
-
 class Road(Shape):
 
     def __init__(self, path, rtype):
@@ -47,7 +29,6 @@ class Road(Shape):
 
         # FIXME -- need to check that path is 
         # continuous
-        self._shape = None
         self._type = rtype
         self.add_path(path)
         # FIXME -- add id
@@ -56,7 +37,9 @@ class Road(Shape):
 
     def __repr__(self):
         output = ''
-        for g in self._shape.geoms:
+        if isinstance(self.get_shape(), Point) :
+            return str(self.get_shape())
+        for g in self.get_shape().geoms:
             for coord in g.coords:
                 output += str(coord)
 
@@ -65,15 +48,19 @@ class Road(Shape):
     def get_id(self):
         return self._id
 
+    def get_type(self):
+        return self._type
+
     def add_path(self, path):
 
         if path is None:
             raise ValueError
 
+        print (path)
         x_diffs = np.diff([p[0] for p in path])
         y_diffs = np.diff([p[1] for p in path])
 
-        if max(x_diffs+y_diffs) > 1 :
+        if len(path) > 1 and max(x_diffs+y_diffs) > 1 :
             print('Road is disconnected')
             return
 
@@ -82,7 +69,10 @@ class Road(Shape):
             return
 
         if self._object is None:
-            self._object = MultiLineString([path])
+            if len(path) == 1:
+                self._object = Point(path[0])
+            else:
+                self._object = MultiPoint(path)
         else:
             new_lines = [path] + [g for g in self._object.geoms]
             
