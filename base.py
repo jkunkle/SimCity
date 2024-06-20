@@ -1,4 +1,4 @@
-from shapely.geometry import Polygon, LineString, MultiLineString, box
+from shapely.geometry import Polygon, LineString, MultiLineString, Point, MultiPoint
 import numpy as np
 import config
 
@@ -14,6 +14,21 @@ class Shape:
     def get_display_repr(self):
         return self._display_repr
 
+    def update_shape(self, other):
+
+        if isinstance(self._object, Point):
+            if isinstance(other, Point):
+                self._object = MultiPoint([self._object, other])
+            else:
+                raise ValueError('Only supported to add point to point')
+        elif isinstance(self._object, MultiPoint):
+            if isinstance(other, Point):
+                self._object = MultiPoint(list(self._object.geoms) + [other])
+            if isinstance(other, MultiPoint):
+                self._object = MultiPoint(self._object.geoms + other.geoms)
+        else:
+            raise ValueError('Only supported to update this type of object')
+
     def get_mask(self):
         xmax = self._object.bounds[2]+1
         ymax = self._object.bounds[3]+1
@@ -25,21 +40,28 @@ class Shape:
 
         return mask
 
-    def get_shape(self):
+    @property
+    def shape(self):
         return self._object
 
     def get_bounds(self):
         return self._object.bounds
 
-    def get_xmax(self):
+    def xmax(self):
         return int(self._object.bounds[2])
-    def get_ymax(self):
+    def ymax(self):
         return int(self._object.bounds[3])
 
-    def get_xmin(self):
+    def xmin(self):
         return int(self._object.bounds[0])
-    def get_ymin(self):
+    def ymin(self):
         return int(self._object.bounds[1])
+
+    def contains(self, point):
+        if not isinstance(point, Point):
+            point = Point(point)
+        return self._object.contains(point)
+
 
     def iter_points(self):
 
@@ -48,7 +70,14 @@ class Shape:
             raise ValueError('Shape object is not instantiated!')
 
         end_add = 0
-        if isinstance(self._object, LineString):
+        if isinstance(self._object, Point):
+            yield (self._object.x, self._object.y)
+
+        elif isinstance(self._object, MultiPoint):
+            for pt in self._object.geoms:
+                yield (pt.x, pt.y)
+
+        elif isinstance(self._object, LineString):
             for c in self._object.coords:
                 yield c
 
@@ -72,29 +101,10 @@ class Shape:
         if self._object is None:
             # FIXME -- better error?
             raise ValueError('Shape object is not instantiated!')
-        return self._object.area
-
-class board_area(Shape):
-
-    def __init__(self, x=None, y=None, x_span=None, y_span=None):
-
-        super().__init__(box(x, y, x_span, y_span))
-
-        self.set_display_repr(config.EMPTY_BLOCK)
-
-        self._x = x
-        self._y = y
-        self._x_span = x_span
-        self._y_span = y_span
-
-    def get_xy(self):
-       return (self._x, self._y)
-
-    def get_x_span(self):
-        return self._x_span
-    def get_y_span(self):
-        return self._y_span
-
-    def get_area(self):
-        return self.get_x_span()*self.get_y_span()
+        if isinstance(self._object, Point):
+            return 1
+        elif isinstance(self._object, MultiPoint):
+            return len(self._object.geoms)
+        else:
+            return self._object.area
 
