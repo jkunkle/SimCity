@@ -1,18 +1,32 @@
 import utils
 import uuid
+import logging
 import config
-from shapely.geometry import box
+from shapely.geometry import box, Point, MultiPoint
 from base import Shape
 from definitions import zone_types
 
 import communication
 
+logger = logging.getLogger(__name__)
 
-class zone(Shape):
+class Zone(Shape):
 
     def __init__(self, zone_types, shape):
 
-        super().__init__(box(*shape))
+        obj = None
+        if isinstance(shape, tuple):
+            obj = Point(shape)
+        if isinstance(shape, list):
+            if isinstance(list[0], tuple):
+                obj = MultiPoint(shape)
+            elif len(list) == 4:
+                obj = box(*shape)
+            else:
+                logger.warning("Shape creation with given input not supported")
+                logger.warning(shape)
+
+        super().__init__(obj)
 
         self._type = zone_types
         self._avalable_shape = self._object
@@ -21,6 +35,18 @@ class zone(Shape):
         self._id = uuid.uuid4()
         # needs to
         self.set_display_repr(config.ZONE_BLOCK[self._type.name])
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def sites(self):
+        return self._sites
 
     def add_site_with_check(self, site):
 
@@ -36,27 +62,33 @@ class zone(Shape):
 
         #point = utils.generate_points_in_polygon(self._avalable_shape, 1)
 
-        site_shape = site.get_shape()
+        site_shape = site.shape
 
-        if self._avalable_shape.contains(site_shape):
-            self._avalable_shape = self._avalable_shape - site_shape
-            self._sites.append(site)
-        else:
-            return False
+        if self.shape.contains(site_shape):
+            overlaps_site = False
+            for s in self._sites:
+                if s.shape.contains(site_shape):
+                    overlaps_site = True
+                    break
 
-        return True
+
+            if not overlaps_site:
+                self._sites.append(site)
+                return True
+
+        return False
 
     def get_total_area(self):
         return self.get_area()
 
+    def get_sites_area(self):
+        if not self._sites:
+            return 0
+
+        return sum([s.get_area() for s in self._sites])
+
     def get_available_area(self):
-        return self._avalable_shape.area
-
-    def get_type(self):
-        return self._type
-
-    def get_id(self):
-        return self._id
+        return self._avalable_shape.get_area()
 
     def get_sites_coords(self):
 
@@ -109,8 +141,6 @@ class zone(Shape):
 
         return sites
 
-    def get_sites(self):
-        return self._sites
 
 
     def update_sites(self, global_parameters):
