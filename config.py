@@ -1,9 +1,21 @@
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
 
 from products import ProductCollection, Product
 
 import functions
-from definitions import zone_types, needs, skills
+from definitions import zone_types, needs, skills, terrain
+
+# Square board, diagonals allowed
+BOARD_TRANSLATIONS = [
+    (1, 0),
+    (0, 1),
+    (-1, 0),
+    (0, -1),
+    (1, 1),
+    (-1, -1),
+    (1, -1),
+    (-1, 1),
+]
 
 JOBS_MULTIPLIER = 0.05
 
@@ -14,17 +26,18 @@ DISTANCE_SCORE_FARM = functions.sigmoid(offset=3, slope=3, scale=-1, intercept=1
 PATH_SCORE_FARM = functions.lookup({1:1}, 0)
 
 AGE_PDF_FARM = functions.GaussPDF(40, 5, 18, 65)
+DEFAULT_TERRAIN_TYPE = terrain.meadow
 
 DEFAULT_EXCESS_OUTPUT_FARM = 0.1
 FARM_OUTPUT_VAR = 0.2
 
 DEFAULT_NEED_RATES = {
-    needs.water: 0.3,
-    needs.food : 0.05,
-    needs.shelter : 0,
-    needs.friend : 0.01,
-    needs.partner : 0.005,
-    needs.happiness : 0.02,
+    needs.water: 0.3/12,
+    needs.food : 0.05/12,
+    needs.shelter : 0.01/12,
+    needs.friend : 0.01/12,
+    needs.partner : 0.005/12,
+    needs.happiness : 0.02/12,
 }
 
 DEFAULT_SKILL_DISTS = {
@@ -50,17 +63,79 @@ SKILL_MODS = {
     }
 }
 
+TERRAIN_COSTS = {
+    terrain.meadow : 0.5,
+    terrain.marsh : 0.25,
+    terrain.forest : 0.25,
+    terrain.stone : 0.5,
+    terrain.beach : 0.3,
+    terrain.water : 0.05,
+    terrain.built_path : 1,
+}
+
+TERRAIN_PROVIDES = {
+    needs.water : terrain.water,
+}
+
+TERRAIN_BUILD_EFFICIENCY = {
+
+    zone_types.residential: {
+        terrain.meadow : 1,
+        terrain.marsh : 0.5,
+        terrain.forest : 0.5,
+        terrain.stone : 0.25,
+        terrain.beach : 0.5,
+        terrain.water : 0,
+        terrain.built_path : 0,
+    },
+    zone_types.commercial: {
+        terrain.meadow : 1,
+        terrain.marsh : 0.5,
+        terrain.forest : 0.5,
+        terrain.stone : 0.25,
+        terrain.beach : 0.5,
+        terrain.water : 0,
+        terrain.built_path : 0,
+    },
+    zone_types.industrial: {
+        terrain.meadow : 1,
+        terrain.marsh : 0.5,
+        terrain.forest : 0.5,
+        terrain.stone : 0.25,
+        terrain.beach : 0.5,
+        terrain.water : 0,
+        terrain.built_path : 0,
+    },
+    zone_types.farm : {
+        terrain.meadow : 1,
+        terrain.marsh : 0.5,
+        terrain.forest : 0.5,
+        terrain.stone : 0.25,
+        terrain.beach : 0.5,
+        terrain.water : 0,
+        terrain.built_path : 0,
+    },
+
+}
+
+
+
+
+    
 
 
 # NOTE -- add configuration for time-dependent generation
 # NOTE -- climate is configurable?
 
 site_shapes = [
-    Polygon([(0,0), (0,1), (1,1), (1,0), (0,0)]),
-    Polygon([(0,0), (0,2), (1,2), (1,0), (0,0)]),
-    Polygon([(0,0), (0,1), (2,1), (2,0), (0,0)]),
-    Polygon([(0,0), (0,2), (2,2), (2,0), (0,0)]),
+    Point(0,0),
 ]
+#site_shapes = [
+#    Polygon([(0,0), (0,1), (1,1), (1,0), (0,0)]),
+#    Polygon([(0,0), (0,2), (1,2), (1,0), (0,0)]),
+#    Polygon([(0,0), (0,1), (2,1), (2,0), (0,0)]),
+#    Polygon([(0,0), (0,2), (2,2), (2,0), (0,0)]),
+#]
 
 distance_match = functions.exp(1, 40, 0.001)
 
