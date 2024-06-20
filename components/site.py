@@ -19,10 +19,12 @@ class site(Shape):
 
         self.set_display_repr(config.SITE_BLOCK[self._zone_type.name])
 
-    def set_zone(self, zone):
-        self._zone = zone
+    @property
+    def residents(self):
+        return self._residents
 
-    def get_id(self):
+    @property
+    def id(self):
         return self._id
 
     def get_corner_coordinates(self):
@@ -33,6 +35,9 @@ class site(Shape):
 
     def get_zone_type(self):
         return self._zone_type
+
+    def set_zone(self, zone):
+        self._zone = zone
 
     def add_resident(self, resident):
         self._residents.append(resident)
