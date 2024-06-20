@@ -3,7 +3,7 @@ from components.zone import zone_types
 
 import config
 
-class farm(business):
+class Farm(business):
 
     def __init__(self, curr_residents, output_capacity, shape):
 
